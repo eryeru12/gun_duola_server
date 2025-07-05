@@ -27,23 +27,42 @@ def allowed_file(filename):
 
 def change_background(img, bg_color):
     """更换图片背景色"""
-    # 转换到HSV色彩空间
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    # 转换到LAB色彩空间 - 对亮度变化更敏感
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     
-    # 定义背景色范围(这里假设原始背景是蓝色)
-    lower_blue = np.array([100, 50, 50])
-    upper_blue = np.array([130, 255, 255])
+    # 自动检测背景色 (假设背景是均匀的)
+    bg_pixels = np.concatenate([
+        lab[0:5, 0:5],       # 左上角
+        lab[0:5, -5:],       # 右上角 
+        lab[-5:, 0:5],       # 左下角
+        lab[-5:, -5:]        # 右下角
+    ])
+    bg_mean = np.mean(bg_pixels, axis=0)
+    
+    # 根据背景亮度动态调整阈值
+    threshold = 25 if bg_mean[0] > 150 else 15  # 亮背景用大阈值
     
     # 创建背景蒙版
-    mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    mask = cv2.inRange(lab, 
+                      bg_mean - threshold,
+                      bg_mean + threshold)
     
-    # 形态学操作优化蒙版
-    kernel = np.ones((5,5), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    # 改进的形态学操作
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
     
-    # 边缘羽化
-    mask = cv2.GaussianBlur(mask, (15,15), 0)
+    # 边缘优化
+    mask = cv2.GaussianBlur(mask, (21,21), 0)
+    _, mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
+    
+    # 使用GrabCut优化困难案例
+    if np.mean(mask) > 0.4:  # 如果背景占比较大
+        bgd_model = np.zeros((1,65), np.float64)
+        fgd_model = np.zeros((1,65), np.float64)
+        mask, _, _ = cv2.grabCut(img, mask, None, bgd_model, fgd_model, 
+                               5, cv2.GC_INIT_WITH_MASK)
+        mask = np.where((mask==2)|(mask==0), 0, 1).astype('uint8')*255
     
     # 创建新背景
     if bg_color == 'white':
