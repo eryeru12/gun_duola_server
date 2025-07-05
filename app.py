@@ -8,6 +8,9 @@ import magic
 from flask import Flask, request, jsonify, render_template
 from werkzeug.utils import secure_filename
 from PIL import Image, ImageFilter
+from mtcnn import MTCNN
+import mediapipe as mp
+import dlib
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -25,57 +28,44 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
 
-def change_background(img, bg_color):
-    """更换图片背景色"""
-    # 转换到LAB色彩空间 - 对亮度变化更敏感
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+def process_image_pipeline(img, bg_color):
+    """4-step image processing pipeline"""
+    # 1. MTCNN face detection and alignment
+    detector = MTCNN()
+    faces = detector.detect_faces(img)
+    if not faces:
+        raise ValueError("No faces detected")
     
-    # 自动检测背景色 (假设背景是均匀的)
-    bg_pixels = np.concatenate([
-        lab[0:5, 0:5],       # 左上角
-        lab[0:5, -5:],       # 右上角 
-        lab[-5:, 0:5],       # 左下角
-        lab[-5:, -5:]        # 右下角
-    ])
-    bg_mean = np.mean(bg_pixels, axis=0)
+    # Get main face (largest bounding box)
+    main_face = max(faces, key=lambda x: x['box'][2] * x['box'][3])
+    x, y, w, h = main_face['box']
     
-    # 根据背景亮度动态调整阈值
-    threshold = 25 if bg_mean[0] > 150 else 15  # 亮背景用大阈值
+    # 2. MediaPipe portrait segmentation
+    mp_selfie_segmentation = mp.solutions.selfie_segmentation
+    with mp_selfie_segmentation.SelfieSegmentation(model_selection=1) as segmenter:
+        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = segmenter.process(rgb_img)
+        mask = (results.segmentation_mask > 0.5).astype(np.uint8) * 255
     
-    # 创建背景蒙版
-    mask = cv2.inRange(lab, 
-                      bg_mean - threshold,
-                      bg_mean + threshold)
-    
-    # 改进的形态学操作
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=2)
-    
-    # 边缘优化
-    mask = cv2.GaussianBlur(mask, (21,21), 0)
-    _, mask = cv2.threshold(mask, 127, 255, cv2.THRESH_BINARY)
-    
-    # 使用GrabCut优化困难案例
-    if np.mean(mask) > 0.4:  # 如果背景占比较大
-        bgd_model = np.zeros((1,65), np.float64)
-        fgd_model = np.zeros((1,65), np.float64)
-        mask, _, _ = cv2.grabCut(img, mask, None, bgd_model, fgd_model, 
-                               5, cv2.GC_INIT_WITH_MASK)
-        mask = np.where((mask==2)|(mask==0), 0, 1).astype('uint8')*255
-    
-    # 创建新背景
+    # 3. Create new background
     if bg_color == 'white':
         new_bg = np.ones_like(img) * 255
     elif bg_color == 'blue':
         new_bg = np.zeros_like(img)
-        new_bg[:,:,0] = 255  # OpenCV使用BGR格式
+        new_bg[:,:,0] = 255  # OpenCV uses BGR format
     else:  # red
         new_bg = np.zeros_like(img)
         new_bg[:,:,2] = 255
     
-    # 合并前景和背景
+    # Combine with mask
     result = np.where(mask[:,:,np.newaxis]==0, img, new_bg)
+    
+    # 4. dlib quality check
+    detector = dlib.get_frontal_face_detector()
+    faces = detector(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY))
+    if not faces:
+        raise ValueError("Quality check failed - no faces detected")
+    
     return result
 
 @app.route('/')
@@ -112,8 +102,8 @@ def process_image():
         if img is None:
             return jsonify({'error': 'Invalid image file'}), 400
         
-        # 更换背景
-        processed_img = change_background(img, bg_color)
+        # Process image through pipeline
+        processed_img = process_image_pipeline(img, bg_color)
         
         # 调整尺寸
         target_size = SIZE_PRESETS.get(size, SIZE_PRESETS['1'])
