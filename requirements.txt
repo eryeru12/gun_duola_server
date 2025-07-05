@@ -7,7 +7,7 @@ opencv-python==4.5.5.64
 python-magic==0.4.27
 pillow==9.5.0
 mtcnn==0.1.1
-mediapipe==0.10.0
-dlib==19.24.2
-cmake==3.26.4
+mediapipe==0.10.21
+#dlib==19.24.2
+#cmake==3.26.4
 rembg==2.0.50

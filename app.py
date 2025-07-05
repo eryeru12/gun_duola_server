@@ -10,7 +10,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image, ImageFilter
 from mtcnn import MTCNN
 import mediapipe as mp
-import dlib
+#import dlib
 from rembg import remove
 
 app = Flask(__name__)
@@ -58,10 +58,10 @@ def process_image_pipeline(img, bg_color):
     result = cv2.cvtColor(np.array(new_bg), cv2.COLOR_RGB2BGR)
     
     # 4. dlib quality check
-    detector = dlib.get_frontal_face_detector()
-    faces = detector(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY))
-    if not faces:
-        raise ValueError("Quality check failed - no faces detected")
+    #detector = dlib.get_frontal_face_detector()
+    #faces = detector(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY))
+    #if not faces:
+    #    raise ValueError("Quality check failed - no faces detected")
     
     return result
 
