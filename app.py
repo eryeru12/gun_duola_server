@@ -49,12 +49,44 @@ def process_image_pipeline(img, bg_color):
     if bg_color == 'white':
         new_bg = Image.new('RGB', output.size, (255, 255, 255))
     elif bg_color == 'blue':
-        new_bg = Image.new('RGB', output.size, (0, 0, 255))
+        new_bg = Image.new('RGB', output.size, (173, 216, 230))  # 浅蓝色
+    elif bg_color == 'gray':
+        new_bg = Image.new('RGB', output.size, (230, 230, 230))  # 浅灰色
     else:  # red
         new_bg = Image.new('RGB', output.size, (255, 0, 0))
+        
+    # 人脸美化 - 转换为OpenCV处理
+    cv_img = cv2.cvtColor(np.array(output.convert('RGB')), cv2.COLOR_RGB2BGR)
+    
+    # 获取人脸区域
+    face_img = cv_img[y:y+h, x:x+w]
+    
+    # 应用双边滤波美化皮肤
+    if face_img.size > 0:
+        face_img = cv2.bilateralFilter(face_img, 9, 75, 75)
+        cv_img[y:y+h, x:x+w] = face_img
+    
+    # 优化头型轮廓 - 使用形态学操作
+    gray = cv2.cvtColor(cv_img, cv2.COLOR_BGR2GRAY)
+    _, mask = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5,5))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    
+    # 转换回PIL格式
+    output = Image.fromarray(cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB))
+    mask = Image.fromarray(mask)
+    output.putalpha(mask)
     
     # Combine with new background
     new_bg.paste(output, (0, 0), output)
+    
+    # 边缘羽化处理
+    mask = output.split()[-1]  # 获取alpha通道作为蒙版
+    blurred_mask = mask.filter(ImageFilter.GaussianBlur(radius=5))
+    new_output = output.copy()
+    new_output.putalpha(blurred_mask)
+    new_bg.paste(new_output, (0, 0), new_output)
+    
     result = cv2.cvtColor(np.array(new_bg), cv2.COLOR_RGB2BGR)
     
     # 4. dlib quality check
