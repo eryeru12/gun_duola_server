@@ -3,3 +3,6 @@ gunicorn==20.1.0
 gevent==24.10.2  # 使用更稳定的gevent版本
 zope.event==4.6
 Werkzeug==2.0
+opencv-python==4.5.5.64
+python-magic==0.4.27
+pillow==9.5.0
