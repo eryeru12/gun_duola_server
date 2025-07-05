@@ -10,3 +10,4 @@ mtcnn==0.1.1
 mediapipe==0.10.0
 dlib==19.24.2
 cmake==3.26.4
+rembg==2.0.50

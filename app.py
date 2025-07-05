@@ -11,6 +11,7 @@ from PIL import Image, ImageFilter
 from mtcnn import MTCNN
 import mediapipe as mp
 import dlib
+from rembg import remove
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -40,25 +41,21 @@ def process_image_pipeline(img, bg_color):
     main_face = max(faces, key=lambda x: x['box'][2] * x['box'][3])
     x, y, w, h = main_face['box']
     
-    # 2. MediaPipe portrait segmentation
-    mp_selfie_segmentation = mp.solutions.selfie_segmentation
-    with mp_selfie_segmentation.SelfieSegmentation(model_selection=1) as segmenter:
-        rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        results = segmenter.process(rgb_img)
-        mask = (results.segmentation_mask > 0.5).astype(np.uint8) * 255
+    # 2. Use rembg to remove background
+    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    output = remove(pil_img)
     
     # 3. Create new background
     if bg_color == 'white':
-        new_bg = np.ones_like(img) * 255
+        new_bg = Image.new('RGB', output.size, (255, 255, 255))
     elif bg_color == 'blue':
-        new_bg = np.zeros_like(img)
-        new_bg[:,:,0] = 255  # OpenCV uses BGR format
+        new_bg = Image.new('RGB', output.size, (0, 0, 255))
     else:  # red
-        new_bg = np.zeros_like(img)
-        new_bg[:,:,2] = 255
+        new_bg = Image.new('RGB', output.size, (255, 0, 0))
     
-    # Combine with mask
-    result = np.where(mask[:,:,np.newaxis]==0, img, new_bg)
+    # Combine with new background
+    new_bg.paste(output, (0, 0), output)
+    result = cv2.cvtColor(np.array(new_bg), cv2.COLOR_RGB2BGR)
     
     # 4. dlib quality check
     detector = dlib.get_frontal_face_detector()
