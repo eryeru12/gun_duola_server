@@ -106,12 +106,12 @@ def process_image():
         target_size = SIZE_PRESETS.get(size, SIZE_PRESETS['1'])
         processed_img = cv2.resize(processed_img, target_size)
         
-        # 保存处理后的图片
+        # 保存处理后的图片(高质量)
         output_path = os.path.join(app.config['UPLOAD_FOLDER'], f'processed_{filename}')
-        cv2.imwrite(output_path, processed_img)
+        cv2.imwrite(output_path, processed_img, [cv2.IMWRITE_JPEG_QUALITY, 95])
         
-        # 返回Base64编码的结果图片
-        _, buffer = cv2.imencode('.jpg', processed_img)
+        # 返回Base64编码的高质量图片
+        _, buffer = cv2.imencode('.jpg', processed_img, [cv2.IMWRITE_JPEG_QUALITY, 95])
         img_str = buffer.tobytes().hex()
         
         return jsonify({
