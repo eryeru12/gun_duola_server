@@ -41,24 +41,9 @@ def process_image_pipeline(img, bg_color):
     main_face = max(faces, key=lambda x: x['box'][2] * x['box'][3])
     x, y, w, h = main_face['box']
     
-    # 2. Use rembg with enhanced background removal
+    # 2. Use rembg to remove background
     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    # 使用post_process=True和alpha_matting参数增强边缘处理
-    output = remove(
-        pil_img,
-        post_process=True,
-        alpha_matting=True,
-        alpha_matting_foreground_threshold=240,
-        alpha_matting_background_threshold=10,
-        alpha_matting_erode_size=10
-    )
-    
-    # 额外边缘清理
-    mask = np.array(output.split()[-1])
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3,3))
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
-    output.putalpha(Image.fromarray(mask))
+    output = remove(pil_img)
     
     # 3. Create new background
     if bg_color == 'white':
@@ -95,29 +80,12 @@ def process_image_pipeline(img, bg_color):
     # Combine with new background
     new_bg.paste(output, (0, 0), output)
     
-    # 高级边缘处理
-    mask = output.split()[-1]  # 获取alpha通道
-    
-    # 精确边缘检测
-    edge_mask = mask.filter(ImageFilter.FIND_EDGES)
-    edge_mask = edge_mask.point(lambda x: 255 if x > 30 else 0)
-    
-    # 动态羽化处理 (根据图像大小调整半径)
-    blur_radius = max(3, min(10, int(output.width / 100)))
-    blurred_mask = mask.filter(ImageFilter.GaussianBlur(radius=blur_radius))
-    
-    # 边缘锐化处理
-    sharp_mask = Image.blend(mask, edge_mask, 0.3)
-    final_mask = Image.blend(blurred_mask, sharp_mask, 0.7)
-    
-    # 应用优化后的边缘
+    # 边缘羽化处理
+    mask = output.split()[-1]  # 获取alpha通道作为蒙版
+    blurred_mask = mask.filter(ImageFilter.GaussianBlur(radius=5))
     new_output = output.copy()
-    new_output.putalpha(final_mask)
+    new_output.putalpha(blurred_mask)
     new_bg.paste(new_output, (0, 0), new_output)
-    
-    # 最终微调
-    result_img = np.array(new_bg)
-    result_img = cv2.detailEnhance(result_img, sigma_s=10, sigma_r=0.15)
     
     result = cv2.cvtColor(np.array(new_bg), cv2.COLOR_RGB2BGR)
     
