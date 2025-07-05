@@ -53,9 +53,33 @@ def process_image_pipeline(img, bg_color):
     else:  # red
         new_bg = Image.new('RGB', output.size, (255, 0, 0))
     
-    # Combine with new background
+    # 高级边缘羽化处理
+    mask = output.split()[-1]
+    
+    # 动态计算羽化半径(基于图像尺寸)
+    base_radius = max(3, min(10, int(output.width / 150)))
+    
+    # 多层羽化处理
+    mask1 = mask.filter(ImageFilter.GaussianBlur(radius=base_radius))
+    mask2 = mask.filter(ImageFilter.GaussianBlur(radius=base_radius*1.5))
+    
+    # 边缘检测优化
+    edge_mask = mask.filter(ImageFilter.FIND_EDGES)
+    edge_mask = edge_mask.point(lambda x: 255 if x > 30 else 0)
+    
+    # 合成最终mask
+    final_mask = Image.blend(mask1, mask2, 0.3)
+    final_mask = Image.blend(final_mask, edge_mask, 0.2)
+    
+    # 应用优化后的mask
+    output.putalpha(final_mask)
     new_bg.paste(output, (0, 0), output)
+    
+    # 最终结果
     result = cv2.cvtColor(np.array(new_bg), cv2.COLOR_RGB2BGR)
+    
+    # 边缘平滑处理
+    result = cv2.edgePreservingFilter(result, flags=1, sigma_s=50, sigma_r=0.4)
     
     # 4. dlib quality check
     #detector = dlib.get_frontal_face_detector()
