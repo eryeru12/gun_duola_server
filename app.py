@@ -52,30 +52,6 @@ def process_image_pipeline(img, bg_color):
         new_bg = Image.new('RGB', output.size, (0, 0, 255))
     else:  # red
         new_bg = Image.new('RGB', output.size, (255, 0, 0))
-        
-    # 眼睛亮化处理
-    cv_img = cv2.cvtColor(np.array(output.convert('RGB')), cv2.COLOR_RGB2BGR)
-    if 'keypoints' in main_face:
-        left_eye = main_face['keypoints']['left_eye']
-        right_eye = main_face['keypoints']['right_eye']
-        
-        # 创建眼睛区域mask
-        eye_mask = np.zeros_like(cv_img[:,:,0])
-        for eye in [left_eye, right_eye]:
-            x, y = int(eye[0]), int(eye[1])
-            cv2.circle(eye_mask, (x,y), 15, 255, -1)  # 眼睛区域半径15像素
-            
-        # 提高眼睛区域亮度
-        lab = cv2.cvtColor(cv_img, cv2.COLOR_BGR2LAB)
-        l, a, b = cv2.split(lab)
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-        l = clahe.apply(l)
-        lab = cv2.merge((l,a,b))
-        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-        
-        # 应用眼睛区域增强
-        cv_img = np.where(eye_mask[:,:,np.newaxis]==255, enhanced, cv_img)
-        output = Image.fromarray(cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB))
     
     # Combine with new background
     new_bg.paste(output, (0, 0), output)
