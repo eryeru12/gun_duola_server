@@ -12,6 +12,7 @@ from mtcnn import MTCNN
 import mediapipe as mp
 #import dlib
 from rembg import remove
+from srcnn import SRCNN
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -34,6 +35,20 @@ def process_image_pipeline(img, bg_color):
     # 2. Use rembg to remove background
     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     output = remove(pil_img)
+    
+    # Convert back to OpenCV format for SRCNN
+    output_np = np.array(output.convert('RGB'))
+    output_np = cv2.cvtColor(output_np, cv2.COLOR_RGB2BGR)
+    
+    # 3. Apply SRCNN super-resolution (if weights file exists)
+    if os.path.exists('srcnn_weights.h5'):
+        srcnn = SRCNN('srcnn_weights.h5')
+        output_np = srcnn.predict(output_np)
+        # Convert back to PIL format
+        output = Image.fromarray(cv2.cvtColor(output_np, cv2.COLOR_BGR2RGB))
+    else:
+        # Skip SRCNN if weights not found
+        output = output.convert('RGB')
     
     # 3. Create new background
     if bg_color == 'white':
