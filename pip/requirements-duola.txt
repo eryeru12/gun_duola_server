@@ -60,7 +60,7 @@ PyMatting==1.1.14
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-magic==0.4.27
-rembg==2.0.50
+rembg>=2.0.50
 requests==2.32.4
 rich==14.0.0
 scikit-image==0.24.0
