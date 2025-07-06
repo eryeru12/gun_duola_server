@@ -1,6 +1,11 @@
 bind = "0.0.0.0:8000"
 workers = 1
-worker_class = "gevent"
+#worker_class = "gevent" alias "eventlet:ali-ubuntu24.04 or debian 12" or "sync:other"
+worker_class = "sync"  # 使用同步工作类
+threads = 2  # 每个工作进程使用1个线程
+max_requests = 1000  # 每个工作进程处理1000个请求后重启
+max_requests_jitter = 50  # 在1000的基础上增加0-50个请求的随机抖动
+graceful_timeout = 30  # 优雅重启的超时时间     
 timeout = 300
 keepalive = 5
 preload_app = True
