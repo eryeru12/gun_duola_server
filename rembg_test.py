@@ -96,7 +96,7 @@ def process_image_pipeline(img, bg_color):
     return result
 
 
-temp_path = os.path.join('uploads', 'zhaopiao.png')
+temp_path = os.path.join('uploads', 'zhaopian.png')
 #img = cv2.imread(temp_path)
 img = Image.open(temp_path).convert('RGB')  # Ensure image is in RGB format
    
