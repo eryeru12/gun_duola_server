@@ -83,3 +83,4 @@ wrapt==1.17.2
 zope.event==4.6
 zope.interface==7.2
 torch==2.7.1
+torchvision==0.22.1

@@ -12,6 +12,7 @@ from mtcnn import MTCNN
 import mediapipe as mp
 #import dlib
 from rembg import remove
+from rembg.session import new_session
 from esrgan import ESRGAN
 
 from srccn_esrgan import SRCNN_ESRGAN
@@ -37,7 +38,10 @@ def process_image_pipeline(img, bg_color):
     
     # 2. Use rembg to remove background
     pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
-    output = remove(pil_img)
+
+    session=new_session('u2net.onnx' , './models')
+    output = remove(pil_img, session=session)
+    #output = remove(pil_img)
     
     # Convert back to OpenCV format for SRCNN
     output_np = np.array(output.convert('RGB'))
