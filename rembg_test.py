@@ -6,6 +6,14 @@ from srccn_esrgan import SRCNN_ESRGAN
 import numpy as np
 import os
 
+# 证件照标准尺寸(单位:mm 转换为像素 300dpi)
+SIZE_PRESETS = {
+    '1': (295, 413),  # 1寸: 25×35mm -> 295×413px
+    '2': (413, 579),  # 2寸: 35×49mm -> 413×579px 
+    '4': (600, 800),  # 4寸: 60×80mm -> 600×800px
+    '6': (900, 1200)  # 6寸: 90×120mm -> 900×1200px
+}
+
 def process_image_pipeline(img, bg_color):
     
     # 2. Use rembg to remove background
@@ -15,26 +23,7 @@ def process_image_pipeline(img, bg_color):
     output = remove(img)
     #output = remove(pil_img)
     
-    # Convert back to OpenCV format for SRCNN
-    output_np = np.array(output.convert('RGB'))
-    output_np = cv2.cvtColor(output_np, cv2.COLOR_RGB2BGR)
-    
-    adjusted_img = SRCNN_ESRGAN.adjust_contrast_brightness(output_np, factor=1.5, brightness=30)
-
-    sharpened_img = SRCNN_ESRGAN.sharpen_image(adjusted_img, sigma=1.0)
-
-    #preprocessed_image_srcnn = preprocess_image(adjusted_img)
-
-    preprocessed_image_esrgan = SRCNN_ESRGAN.preprocess_image(sharpened_img)
-
-    #srcnn_model = load_srcnn_model('srcnn_weights.h5')  # Load SRCNN model
-    esrgan_model = SRCNN_ESRGAN.load_esrgan_model('models/esrgan_weights.pth')  # Load ESRGAN model
-
-    #super_resolve_image_srcnn = super_resolve_image_srcnn(srcnn_model, preprocessed_image_srcnn, scale=3)
-
-    resolve_image_esrgan = SRCNN_ESRGAN.super_resolve_image_esrgan(esrgan_model, preprocessed_image_esrgan, scale=4)
-
-    output = Image.fromarray(resolve_image_esrgan)
+   
     
     # 3. Create new background
     if bg_color == 'white':
@@ -92,8 +81,39 @@ def process_image_pipeline(img, bg_color):
     #faces = detector(cv2.cvtColor(result, cv2.COLOR_BGR2GRAY))
     #if not faces:
     #    raise ValueError("Quality check failed - no faces detected")
+
+            # 按证件照尺寸裁剪人物(居中)
+    processed_img = result.copy()
+    target_width, target_height = SIZE_PRESETS.get(2, SIZE_PRESETS['1'])
+    h, w = processed_img.shape[:2]
+        
+    # 计算缩放比例并保持宽高比
+    scale = min(target_width/w, target_height/h)
+    new_w, new_h = int(w*scale), int(h*scale)
+    resized = cv2.resize(processed_img, (new_w, new_h))
+        
+    # 创建目标尺寸画布并居中放置
+    canvas = np.zeros((target_height, target_width, 3), dtype=np.uint8)
+    if bg_color == 'white':
+        canvas.fill(255)
+    elif bg_color == 'blue':
+        canvas[:,:,2] = 255  # 蓝色背景
+    else:  # red
+        canvas[:,:,0] = 255  # 红色背景
+            
+    # 计算居中位置
+    x_offset = (target_width - new_w) // 2
+    y_offset = (target_height - new_h) // 2
+    canvas[y_offset:y_offset+new_h, x_offset:x_offset+new_w] = resized
+    processed_img = canvas
+        
+    # 保存处理后的图片(最高质量)
+    output_path = os.path.join('uploads', f'processed_white.png')
+    # 返回Base64编码的最高质量图片
+    _, buffer = cv2.imencode('.png', processed_img)  # 使用无损PNG格式
+    cv2.imwrite(output_path, processed_img, [cv2.IMWRITE_JPEG_QUALITY, 100])
     
-    return result
+    return output_path
 
 
 temp_path = os.path.join('uploads', 'zhaopian.png')
