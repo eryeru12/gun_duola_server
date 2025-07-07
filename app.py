@@ -12,7 +12,7 @@ from mtcnn import MTCNN
 import mediapipe as mp
 #import dlib
 from rembg import remove
-from rembg.session import new_session
+from rembg import new_session
 from esrgan import ESRGAN
 
 from srccn_esrgan import SRCNN_ESRGAN
