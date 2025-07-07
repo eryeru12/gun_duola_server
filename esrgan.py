@@ -3,13 +3,18 @@ import tensorflow as tf
 import numpy as np
 import cv2
 from PIL import Image
+import torch
 
 class ESRGAN:
     def __init__(self, model_path=None):
         self.model = None
         if model_path and os.path.exists(model_path):
             try:
-                self.model = tf.keras.models.load_model(model_path)
+                #self.model = tf.keras.models.load_model(model_path)
+                device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                self.model = torch.load(model_path, map_location=device)
+                #self.model = torch.jit.load(model_path)  # Load as Torch model
+                #self.model.eval()  # Set to evaluation mode
                 print(f"Successfully loaded ESRGAN model from {model_path}")
             except Exception as e:
                 print(f"Failed to load ESRGAN model: {str(e)}")
