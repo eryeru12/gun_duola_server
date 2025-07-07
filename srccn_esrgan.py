@@ -20,7 +20,11 @@ class SRCNN_ESRGAN:
             print("ESRGAN model file not found.")
             return None
         try:
-            model = keras.layers.TFSMLayer(model_path, call_endpoint='serving_default')
+            import torch
+ 
+            # 确保模型路径正确
+           
+            model = torch.load(model_path, map_location=torch.device('cpu'))
             
             print(f"Successfully loaded ESRGAN model from {model_path}")
             return model
