@@ -2,9 +2,11 @@ from PIL import Image
 from rembg import remove
 import cv2
 from rembg import new_session
+import rembg
 from srccn_esrgan import SRCNN_ESRGAN
 import numpy as np
 import os
+from esrgan import ESRGAN
 
 # 证件照标准尺寸(单位:mm 转换为像素 300dpi)
 SIZE_PRESETS = {
@@ -20,10 +22,10 @@ def process_image_pipeline(img, bg_color):
     #pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     #pil_img = Image.fromarray(img)  # Assuming img is already in RGB format
 
-    output = remove(img)
+    output = remove(img, session=rembg.new_session('u2net_human_seg', './models'))
     #output = remove(pil_img)
     
-   
+    output=ESRGAN(model_path='models/esrgan_weights.pth').predict(output)  # Load ESRGAN model
     
     # 3. Create new background
     if bg_color == 'white':
@@ -49,7 +51,7 @@ def process_image_pipeline(img, bg_color):
     # 计算距离变换找到真正边缘
     dist = cv2.distanceTransform(mask, cv2.DIST_L2, 3)
     # 只处理距离边缘3-10像素的区域
-    edge_region = np.where((dist > 3) & (dist < 10), 1.0, 0.0).astype(np.float32)
+    edge_region = np.where((dist > 0) & (dist < 5), 1.0, 0.0).astype(np.float32)
     edge_region = cv2.GaussianBlur(edge_region, (0,0), sigmaX=2)
     
     # 3. 颜色混合(仅在边缘区域)
