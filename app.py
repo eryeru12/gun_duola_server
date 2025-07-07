@@ -14,8 +14,8 @@ import mediapipe as mp
 from rembg import remove
 from esrgan import ESRGAN
 
-from srcnn_esrgan import SRCNN_ESRGAN
-#from srcnn_esrgan import adjust_contrast_brightness, sharpen_image, super_resolve_image_srcnn, super_resolve_image_esrgan, preprocess_image, load_srcnn_model, load_esrgan_model
+from srccn_esrgan import SRCNN_ESRGAN
+#from srccn_esrgan import adjust_contrast_brightness, sharpen_image, super_resolve_image_srcnn, super_resolve_image_esrgan, preprocess_image, load_srcnn_model, load_esrgan_model
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
