@@ -14,6 +14,8 @@ import mediapipe as mp
 from rembg import remove
 from esrgan import ESRGAN
 
+from srcnn_esrgan import adjust_contrast_brightness, sharpen_image, super_resolve_image_srcnn, super_resolve_image_esrgan, preprocess_image, load_srcnn_model, load_esrgan_model
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['ALLOWED_EXTENSIONS'] = {'png', 'jpg', 'jpeg'}
@@ -40,15 +42,22 @@ def process_image_pipeline(img, bg_color):
     output_np = np.array(output.convert('RGB'))
     output_np = cv2.cvtColor(output_np, cv2.COLOR_RGB2BGR)
     
-    # 3. Apply ESRGAN super-resolution (if model file exists)
-    if os.path.exists('RRDB_PSNR_x4.pth'):
-        esrgan = ESRGAN('RRDB_PSNR_x4.pth')
-        output_np = esrgan.predict(output_np)
-        # Convert back to PIL format
-        output = Image.fromarray(cv2.cvtColor(output_np, cv2.COLOR_BGR2RGB))
-    else:
-        # Skip ESRGAN if model not found
-        output = output.convert('RGB')
+    adjusted_img = adjust_contrast_brightness(output_np, factor=1.5, brightness=30)
+
+    sharpened_img = sharpen_image(adjusted_img, sigma=1.0)
+
+    #preprocessed_image_srcnn = preprocess_image(adjusted_img)
+
+    preprocessed_image_esrgan = preprocess_image(sharpened_img)
+
+    #srcnn_model = load_srcnn_model('srcnn_weights.h5')  # Load SRCNN model
+    esrgan_model = load_esrgan_model('esrgan_weights.h5')  # Load ESRGAN model
+
+    #super_resolve_image_srcnn = super_resolve_image_srcnn(srcnn_model, preprocessed_image_srcnn, scale=3)
+
+    super_resolve_image_esrgan = super_resolve_image_esrgan(esrgan_model, preprocessed_image_esrgan, scale=4)
+
+    output = Image.fromarray(super_resolve_image_esrgan)
     
     # 3. Create new background
     if bg_color == 'white':
