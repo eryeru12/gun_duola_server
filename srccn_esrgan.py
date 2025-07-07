@@ -1,9 +1,11 @@
 import cv2
 import numpy as np
 import os
+import torch
 import tensorflow as tf
 
 from PIL import Image
+from torchvision.transforms import ToTensor, ToPILImage
 
 from keras.models import load_model
 import keras 
@@ -20,32 +22,14 @@ class SRCNN_ESRGAN:
             print("ESRGAN model file not found.")
             return None
         try:
-            import torch
- 
-            # 确保模型路径正确
-           
-            model = torch.load(model_path, map_location=torch.device('cpu'))
-            
+            # Load PyTorch model
+            device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            model = torch.load(model_path, map_location=device)
+            model.eval()
             print(f"Successfully loaded ESRGAN model from {model_path}")
             return model
         except Exception as e:
             print(f"Failed to load ESRGAN model: {str(e)}")
-            return None
-        
-    @staticmethod
-    def load_srcnn_model(model_path):
-        """
-        Load the SRCNN model from the specified path.
-        """
-        if not model_path or not os.path.exists(model_path):
-            print("SRCNN model file not found.")
-            return None
-        try:
-            model = load_model(model_path)
-            print(f"Successfully loaded SRCNN model from {model_path}")
-            return model
-        except Exception as e:
-            print(f"Failed to load SRCNN model: {str(e)}")
             return None
         
     @staticmethod
@@ -114,10 +98,16 @@ class SRCNN_ESRGAN:
         """
         Apply super-resolution using the ESRGAN model.
         """
-        output = model.predict(image)  # Get prediction from Keras model
+        # Convert image to tensor
+        img_tensor = ToTensor()(image).unsqueeze(0)
         
-        output = output[0]  # Remove batch dimension
-        output = (output * 255.0).clip(0, 255).astype(np.uint8)  # Scale to [0, 255]
-        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)  # Convert to BGR format
+        # Run prediction
+        with torch.no_grad():
+            output = model(img_tensor)
+        
+        # Convert back to numpy array
+        output = output.squeeze().permute(1, 2, 0).numpy()
+        output = (output * 255.0).clip(0, 255).astype(np.uint8)
+        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)
 
         return output
