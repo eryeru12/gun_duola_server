@@ -51,7 +51,7 @@ def process_image_pipeline(img, bg_color):
     preprocessed_image_esrgan = preprocess_image(sharpened_img)
 
     #srcnn_model = load_srcnn_model('srcnn_weights.h5')  # Load SRCNN model
-    esrgan_model = load_esrgan_model('esrgan_weights.h5')  # Load ESRGAN model
+    esrgan_model = load_esrgan_model('models/esrgan_weights.h5')  # Load ESRGAN model
 
     #super_resolve_image_srcnn = super_resolve_image_srcnn(srcnn_model, preprocessed_image_srcnn, scale=3)
 
