@@ -6,6 +6,7 @@ import tensorflow as tf
 from PIL import Image
 
 from keras.models import load_model
+import keras 
 
 class SRCNN_ESRGAN:
 
@@ -19,7 +20,8 @@ class SRCNN_ESRGAN:
             print("ESRGAN model file not found.")
             return None
         try:
-            model = tf.keras.models.load_model(model_path)
+            model = keras.layers.TFSMLayer(model_path, call_endpoint='serving_default')
+            
             print(f"Successfully loaded ESRGAN model from {model_path}")
             return model
         except Exception as e:

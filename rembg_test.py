@@ -12,7 +12,7 @@ def process_image_pipeline(img, bg_color):
     #pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
     #pil_img = Image.fromarray(img)  # Assuming img is already in RGB format
 
-    output = remove(img, session=new_session('u2net.onnx' , './models'))
+    output = remove(img)
     #output = remove(pil_img)
     
     # Convert back to OpenCV format for SRCNN
