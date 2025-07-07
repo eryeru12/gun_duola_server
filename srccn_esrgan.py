@@ -9,108 +9,111 @@ from PIL import Image
 
 from keras.models import load_model
 
-def load_esrgan_model(model_path):
-    """
-    Load the ESRGAN model from the specified path.
-    """
-    if not model_path or not os.path.exists(model_path):
-        print("ESRGAN model file not found.")
-        return None
-    try:
-        model = torch.load(model_path)
-        print(f"Successfully loaded ESRGAN model from {model_path}")
-        model.eval()  # Set the model to evaluation mode
-        # If using GPU, move the model to GPU   
+class SRCNN_ESRGAN:
 
-        return model
-    except Exception as e:
-        print(f"Failed to load ESRGAN model: {str(e)}")
-        return None
-    
-def load_srcnn_model(model_path):
-    """
-    Load the SRCNN model from the specified path.
-    """
-    if not model_path or not os.path.exists(model_path):
-        print("SRCNN model file not found.")
-        return None
-    try:
-        model = load_model(model_path)
-        print(f"Successfully loaded SRCNN model from {model_path}")
-        return model
-    except Exception as e:
-        print(f"Failed to load SRCNN model: {str(e)}")
-        return None
-    
-def preprocess_image(image, scale=3):
-    """
-    Preprocess the image for SRCNN model.
-    Resize and normalize the image.
-    """
-    height, width, _ = image.shape
 
-    image = cv2.resize(image, (width//scale, height//scale), interpolation=cv2.INTER_CUBIC) 
-    
-    image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)  # Resize back to original size   
+    def load_esrgan_model(model_path):
+        """
+        Load the ESRGAN model from the specified path.
+        """
+        if not model_path or not os.path.exists(model_path):
+            print("ESRGAN model file not found.")
+            return None
+        try:
+            model = torch.load(model_path)
+            print(f"Successfully loaded ESRGAN model from {model_path}")
+            model.eval()  # Set the model to evaluation mode
+            # If using GPU, move the model to GPU   
 
-    image = image.astype(np.float32) / 255.0  # Normalize to [0, 1]
+            return model
+        except Exception as e:
+            print(f"Failed to load ESRGAN model: {str(e)}")
+            return None
+        
+    def load_srcnn_model(model_path):
+        """
+        Load the SRCNN model from the specified path.
+        """
+        if not model_path or not os.path.exists(model_path):
+            print("SRCNN model file not found.")
+            return None
+        try:
+            model = load_model(model_path)
+            print(f"Successfully loaded SRCNN model from {model_path}")
+            return model
+        except Exception as e:
+            print(f"Failed to load SRCNN model: {str(e)}")
+            return None
+        
+    def preprocess_image(image, scale=3):
+        """
+        Preprocess the image for SRCNN model.
+        Resize and normalize the image.
+        """
+        height, width, _ = image.shape
 
-    return
+        image = cv2.resize(image, (width//scale, height//scale), interpolation=cv2.INTER_CUBIC) 
+        
+        image = cv2.resize(image, (width, height), interpolation=cv2.INTER_CUBIC)  # Resize back to original size   
 
-def postprocess_image_esrgan(image):
-    """
-    Postprocess the image after ESRGAN prediction.
-    Convert back to uint8 and scale to [0, 255].
-    """
-    image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        image = image.astype(np.float32) / 255.0  # Normalize to [0, 1]
 
-    image = ToTensor()(image).unsqueeze(0)  # Convert to tensor and add batch dimension
+        return
 
-    return image
+    def postprocess_image_esrgan(image):
+        """
+        Postprocess the image after ESRGAN prediction.
+        Convert back to uint8 and scale to [0, 255].
+        """
+        image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
 
-def adjust_contrast_brightness(image, factor=1.0, brightness=0):
-    """
-    Adjust the contrast of the image.
-    """
-    
-    return cv2.convertScaleAbs(image, alpha=factor, beta=brightness)
+        image = ToTensor()(image).unsqueeze(0)  # Convert to tensor and add batch dimension
 
-def sharpen_image(image, sigma=1.0):
-    """
-    Sharpen the image using a Gaussian kernel.
-    """
-    kernel = np.array([[0, -1, 0],
-                       [-1, 5 , -1],
-                       [0, -1, 0]])
-    return cv2.filter2D(image, -1, kernel)
+        return image
 
-def super_resolve_image_srcnn(model, image, scale=3):
-    """
-    Apply super-resolution using the ESRGAN model.
-    """
-    image = np.expand_dims(image, axis=0)  # Add batch dimension
+    def adjust_contrast_brightness(image, factor=1.0, brightness=0):
+        """
+        Adjust the contrast of the image.
+        """
+        
+        return cv2.convertScaleAbs(image, alpha=factor, beta=brightness)
 
-    output = model.predict(image)
+    def sharpen_image(image, sigma=1.0):
+        """
+        Sharpen the image using a Gaussian kernel.
+        """
+        kernel = np.array([[0, -1, 0],
+                        [-1, 5 , -1],
+                        [0, -1, 0]])
+        return cv2.filter2D(image, -1, kernel)
 
-    output = output[0]*255.0    
-    
-    output = np.clip(output, 0, 255)  # Ensure pixel values are in [0, 255]
+    def super_resolve_image_srcnn(model, image, scale=3):
+        """
+        Apply super-resolution using the ESRGAN model.
+        """
+        image = np.expand_dims(image, axis=0)  # Add batch dimension
 
-    output = output.astype(np.uint8)  # Convert to uint8
+        output = model.predict(image)
 
-    return output
+        output = output[0]*255.0    
+        
+        output = np.clip(output, 0, 255)  # Ensure pixel values are in [0, 255]
 
-def super_resolve_image_esrgan(model, image, scale=4):
-    """
-    Apply super-resolution using the ESRGAN model.
-    """
-    with torch.no_grad():
-        output = model(image)
-    
-    output = output.squeeze(0).permute(1, 2, 0).numpy()  # Convert to HWC format
+        output = output.astype(np.uint8)  # Convert to uint8
 
-    output = (output * 255.0).clip(0, 255).astype(np.uint8)  # Scale to [0, 255]
+        return output
 
-    output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)  # Convert to BGR format   
+    def super_resolve_image_esrgan(model, image, scale=4):
+        """
+        Apply super-resolution using the ESRGAN model.
+        """
+        with torch.no_grad():
+            output = model(image)
+        
+        output = output.squeeze(0).permute(1, 2, 0).numpy()  # Convert to HWC format
 
-    return output
+        output = (output * 255.0).clip(0, 255).astype(np.uint8)  # Scale to [0, 255]
+
+        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)  # Convert to BGR format   
+
+        return output

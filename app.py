@@ -14,7 +14,8 @@ import mediapipe as mp
 from rembg import remove
 from esrgan import ESRGAN
 
-from srcnn_esrgan import adjust_contrast_brightness, sharpen_image, super_resolve_image_srcnn, super_resolve_image_esrgan, preprocess_image, load_srcnn_model, load_esrgan_model
+from srcnn_esrgan import SRCNN_ESRGAN
+#from srcnn_esrgan import adjust_contrast_brightness, sharpen_image, super_resolve_image_srcnn, super_resolve_image_esrgan, preprocess_image, load_srcnn_model, load_esrgan_model
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -42,16 +43,16 @@ def process_image_pipeline(img, bg_color):
     output_np = np.array(output.convert('RGB'))
     output_np = cv2.cvtColor(output_np, cv2.COLOR_RGB2BGR)
     
-    adjusted_img = adjust_contrast_brightness(output_np, factor=1.5, brightness=30)
+    adjusted_img = SRCNN_ESRGAN.adjust_contrast_brightness(output_np, factor=1.5, brightness=30)
 
-    sharpened_img = sharpen_image(adjusted_img, sigma=1.0)
+    sharpened_img = SRCNN_ESRGAN.sharpen_image(adjusted_img, sigma=1.0)
 
     #preprocessed_image_srcnn = preprocess_image(adjusted_img)
 
-    preprocessed_image_esrgan = preprocess_image(sharpened_img)
+    preprocessed_image_esrgan = SRCNN_ESRGAN.preprocess_image(sharpened_img)
 
     #srcnn_model = load_srcnn_model('srcnn_weights.h5')  # Load SRCNN model
-    esrgan_model = load_esrgan_model('models/esrgan_weights.pth')  # Load ESRGAN model
+    esrgan_model = SRCNN_ESRGAN.load_esrgan_model('models/esrgan_weights.pth')  # Load ESRGAN model
 
     #super_resolve_image_srcnn = super_resolve_image_srcnn(srcnn_model, preprocessed_image_srcnn, scale=3)
 
