@@ -1,9 +1,7 @@
 import cv2
 import numpy as np
-
-import torch
-
-from torchvision.transforms import ToTensor, Normalize, Resize, Compose,ToPILImage
+import os
+import tensorflow as tf
 
 from PIL import Image
 
@@ -12,6 +10,7 @@ from keras.models import load_model
 class SRCNN_ESRGAN:
 
 
+    @staticmethod
     def load_esrgan_model(model_path):
         """
         Load the ESRGAN model from the specified path.
@@ -20,16 +19,14 @@ class SRCNN_ESRGAN:
             print("ESRGAN model file not found.")
             return None
         try:
-            model = torch.load(model_path)
+            model = tf.keras.models.load_model(model_path)
             print(f"Successfully loaded ESRGAN model from {model_path}")
-            model.eval()  # Set the model to evaluation mode
-            # If using GPU, move the model to GPU   
-
             return model
         except Exception as e:
             print(f"Failed to load ESRGAN model: {str(e)}")
             return None
         
+    @staticmethod
     def load_srcnn_model(model_path):
         """
         Load the SRCNN model from the specified path.
@@ -45,6 +42,7 @@ class SRCNN_ESRGAN:
             print(f"Failed to load SRCNN model: {str(e)}")
             return None
         
+    @staticmethod
     def preprocess_image(image, scale=3):
         """
         Preprocess the image for SRCNN model.
@@ -58,19 +56,19 @@ class SRCNN_ESRGAN:
 
         image = image.astype(np.float32) / 255.0  # Normalize to [0, 1]
 
-        return
+        return image
 
+    @staticmethod
     def postprocess_image_esrgan(image):
         """
         Postprocess the image after ESRGAN prediction.
         Convert back to uint8 and scale to [0, 255].
         """
-        image = Image.fromarray(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        image = image.astype(np.float32) / 255.0  # Normalize to [0, 1]
+        return np.expand_dims(image, axis=0)  # Add batch dimension
 
-        image = ToTensor()(image).unsqueeze(0)  # Convert to tensor and add batch dimension
-
-        return image
-
+    @staticmethod
     def adjust_contrast_brightness(image, factor=1.0, brightness=0):
         """
         Adjust the contrast of the image.
@@ -78,6 +76,7 @@ class SRCNN_ESRGAN:
         
         return cv2.convertScaleAbs(image, alpha=factor, beta=brightness)
 
+    @staticmethod
     def sharpen_image(image, sigma=1.0):
         """
         Sharpen the image using a Gaussian kernel.
@@ -87,6 +86,7 @@ class SRCNN_ESRGAN:
                         [0, -1, 0]])
         return cv2.filter2D(image, -1, kernel)
 
+    @staticmethod
     def super_resolve_image_srcnn(model, image, scale=3):
         """
         Apply super-resolution using the ESRGAN model.
@@ -103,17 +103,15 @@ class SRCNN_ESRGAN:
 
         return output
 
+    @staticmethod
     def super_resolve_image_esrgan(model, image, scale=4):
         """
         Apply super-resolution using the ESRGAN model.
         """
-        with torch.no_grad():
-            output = model(image)
+        output = model.predict(image)  # Get prediction from Keras model
         
-        output = output.squeeze(0).permute(1, 2, 0).numpy()  # Convert to HWC format
-
+        output = output[0]  # Remove batch dimension
         output = (output * 255.0).clip(0, 255).astype(np.uint8)  # Scale to [0, 255]
-
-        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)  # Convert to BGR format   
+        output = cv2.cvtColor(output, cv2.COLOR_RGB2BGR)  # Convert to BGR format
 
         return output

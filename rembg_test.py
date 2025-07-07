@@ -2,16 +2,17 @@ from PIL import Image
 from rembg import remove
 import cv2
 from rembg import new_session
-from srccn_esrgan import SRCNN_ESRGAN, super_resolve_image_esrgan
+from srccn_esrgan import SRCNN_ESRGAN
 import numpy as np
 import os
 
 def process_image_pipeline(img, bg_color):
     
     # 2. Use rembg to remove background
-    pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    #pil_img = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+    #pil_img = Image.fromarray(img)  # Assuming img is already in RGB format
 
-    output = remove(pil_img, session=new_session('u2net.onnx' , './models'))
+    output = remove(img, session=new_session('u2net.onnx' , './models'))
     #output = remove(pil_img)
     
     # Convert back to OpenCV format for SRCNN
@@ -31,9 +32,9 @@ def process_image_pipeline(img, bg_color):
 
     #super_resolve_image_srcnn = super_resolve_image_srcnn(srcnn_model, preprocessed_image_srcnn, scale=3)
 
-    super_resolve_image_esrgan = super_resolve_image_esrgan(esrgan_model, preprocessed_image_esrgan, scale=4)
+    resolve_image_esrgan = SRCNN_ESRGAN.super_resolve_image_esrgan(esrgan_model, preprocessed_image_esrgan, scale=4)
 
-    output = Image.fromarray(super_resolve_image_esrgan)
+    output = Image.fromarray(resolve_image_esrgan)
     
     # 3. Create new background
     if bg_color == 'white':
@@ -96,7 +97,8 @@ def process_image_pipeline(img, bg_color):
 
 
 temp_path = os.path.join('uploads', 'zhaopiao.png')
-img = cv2.imread(temp_path)
+#img = cv2.imread(temp_path)
+img = Image.open(temp_path).convert('RGB')  # Ensure image is in RGB format
    
 bg_color = 'white'  # Example background color, can be 'white', 'blue', or 'red'
         
