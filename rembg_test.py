@@ -39,6 +39,34 @@ def process_image_pipeline(img, bg_color):
         output_rgb = cv2.cvtColor(output_np, cv2.COLOR_RGB2BGR)
     
     print(f"Output RGB shape: {output_rgb.shape}")  # 调试输出
+    
+    # 3. 使用ESRGAN进行超分辨率重建
+    esrgan_model_path = 'models/esrgan_weights.pth'
+    if os.path.exists(esrgan_model_path):
+        # 图像预处理 - 转换为float32并归一化
+        output_rgb = output_rgb.astype(np.float32) / 255.0
+        
+        esrgan = ESRGAN(model_path=esrgan_model_path)
+        if esrgan.model is not None:
+            try:
+                    # 限制最大放大尺寸
+                max_size = 2000
+                h, w = output_rgb.shape[:2]
+                if max(h, w) > max_size:
+                    scale = max_size / max(h, w)
+                    output_rgb = cv2.resize(output_rgb, (int(w*scale), int(h*scale)))
+                    
+                output_rgb = esrgan.predict(output_rgb)
+                    
+                    # 后处理 - 锐化
+                kernel = np.array([[-1,-1,-1], [-1,9,-1], [-1,-1,-1]])
+                output_rgb = cv2.filter2D(output_rgb, -1, kernel)
+                    
+                print("ESRGAN超分辨率重建完成")
+            except Exception as e:
+                print(f"ESRGAN预测失败: {str(e)}")
+    else:
+        print(f"警告: ESRGAN模型文件 {esrgan_model_path} 不存在，跳过超分辨率步骤")
         
     # 确保图像值在0-255范围
     output_rgb = np.clip(output_rgb * 255, 0, 255).astype(np.uint8)
